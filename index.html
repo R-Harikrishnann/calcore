@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Premium Calculator Suite</title>
+    <style>
+        :root {
+            /* Light Mode Default */
+            --bg-body: #f0f2f5;
+            --bg-app: #ffffff;
+            --surface: #f8f9fa;
+            --surface-hover: #e9ecef;
+            --surface-active: #dee2e6;
+            --border: rgba(0, 0, 0, 0.08);
+            --primary: #0088aa;
+            --primary-glow: rgba(0, 136, 170, 0.2);
+            --primary-dark: #005f73;
+            --text: #212529;
+            --text-dim: #6c757d;
+            --danger: #e63946;
+            --success: #2a9d8f;
+            --warning: #f4a261;
+            
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 10px;
+            --nav-height: 75px;
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        [data-theme="dark"] {
+            /* Dark Mode */
+            --bg-body: #050505;
+            --bg-app: #0a0b0e;
+            --surface: #15161a;
+            --surface-hover: #1e1f24;
+            --surface-active: #2a2c33;
+            --border: rgba(255, 255, 255, 0.08);
+            --primary: #00d2ff;
+            --primary-glow: rgba(0, 210, 255, 0.3);
+            --primary-dark: #0088aa;
+            --text: #ffffff;
+            --text-dim: #8e929b;
+            --danger: #ff4b4b;
+            --success: #00e676;
+            --warning: #f4a261;
+        }
+
+        /* Smooth Theme Transitions */
+        body, #app-container, .screen, .calc-display, .btn, .sub-screen, .sub-header, .bottom-nav, .tool-card, .calc-expr, .input-control, .hist-item, .summary-card, .expense-item, .settings-card, .setting-item, .theme-btn, .filter-tab, .cat-item, .confirm-box, .info-card, .budget-card, .privacy-card {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* GLOBAL SELECTION FIX */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* ONLY ALLOW SELECTION ON SPECIFIC TEXT/INPUTS */
+        input, select, textarea, .calc-expr, .calc-current, .hist-expr, .hist-res, .privacy-text {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text);
+            font-family: var(--font-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 420px;
+            height: 100dvh; 
+            background-color: var(--bg-app);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
+        }
+
+        [data-theme="dark"] #app-container { box-shadow: 0 0 40px rgba(0, 0, 0, 0.8); }
+
+        @media (min-width: 480px) {
+            #app-container {
+                height: 95vh;
+                max-height: 900px;
+                border-radius: 40px;
+                border: 1px solid var(--border);
+            }
+        }
+
+        #main-content { flex: 1; position: relative; overflow: hidden; }
+
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; overflow-y: auto;
+        }
+        .screen.active { display: flex; }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+        h1, h2, h3 { font-weight: 600; }
+        .title-bar { padding: 24px 20px 10px; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; flex-shrink: 0; }
+        .subtitle { padding: 0 20px 20px; font-size: 14px; color: var(--text-dim); flex-shrink: 0; }
+
+        /* --- 1. CALCULATOR SCREEN --- */
+        #screen-calc { overflow: hidden; }
+        
+        .calc-display {
+            flex: 1 1 auto; min-height: 120px; display: flex; flex-direction: column;
+            justify-content: flex-end; align-items: flex-end; padding: 30px 24px 20px;
+            background: linear-gradient(180deg, var(--bg-app) 0%, var(--surface) 100%);
+            border-bottom-left-radius: 30px; border-bottom-right-radius: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); position: relative; z-index: 2;
+        }
+
+        [data-theme="dark"] .calc-display { box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        
+        .deg-rad-toggle {
+            position: absolute; top: 20px; left: 20px; font-size: 12px; font-weight: 600;
+            letter-spacing: 1px; color: var(--primary); background: rgba(0, 136, 170, 0.1);
+            padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(0, 136, 170, 0.2);
+            cursor: pointer; display: none; 
+        }
+        [data-theme="dark"] .deg-rad-toggle { background: rgba(0, 210, 255, 0.1); border-color: rgba(0, 210, 255, 0.2); }
+
+        .calc-expr {
+            width: 100%; border: none; background: transparent; color: var(--text-dim);
+            font-size: 24px; text-align: right; outline: none; font-family: inherit;
+            padding: 0; margin-bottom: 8px; white-space: nowrap; overflow-x: auto; min-height: 32px;
+        }
+        .calc-expr::-webkit-scrollbar { display: none; }
+        .calc-current { 
+            font-size: 56px; font-weight: 300; line-height: 1.1; text-align: right; width: 100%; 
+            overflow-x: auto; white-space: nowrap; scrollbar-width: none; min-height: 60px;
+        }
+        .calc-current::-webkit-scrollbar { display: none; }
+        
+        .calc-tabs { flex: 0 0 auto; display: flex; gap: 20px; padding: 15px 24px 10px; }
+        .calc-tab { font-size: 14px; color: var(--text-dim); cursor: pointer; font-weight: 500; }
+        .calc-tab.active { color: var(--primary); text-shadow: 0 0 8px var(--primary-glow); }
+
+        .calc-keypad { flex: 0 0 auto; display: grid; gap: 12px; padding: 10px 24px 20px; animation: fadeIn 0.3s ease; }
+        #keypad-standard { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(5, clamp(50px, 7vh, 75px)); }
+        #keypad-scientific { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(6, clamp(40px, 6vh, 60px)); gap: 10px; padding: 5px 16px 20px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn {
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+            display: flex; justify-content: center; align-items: center; font-size: 24px; color: var(--text);
+            cursor: pointer; user-select: none;
+        }
+        .btn:active { transform: scale(0.92); background: var(--surface-active); }
+        .btn.op { color: var(--primary); background: rgba(0, 136, 170, 0.05); border-color: rgba(0, 136, 170, 0.1); }
+        .btn.special { color: var(--danger); background: rgba(230, 57, 70, 0.05); }
+        .btn.eq { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; box-shadow: 0 4px 15px var(--primary-glow); border: none; }
+        
+        [data-theme="dark"] .btn.op { background: rgba(0, 210, 255, 0.05); border-color: rgba(0, 210, 255, 0.1); }
+        [data-theme="dark"] .btn.special { background: rgba(255, 75, 75, 0.05); }
+        .btn.sci { font-size: 16px; font-weight: 500; }
+
+        /* --- HISTORY PAGE --- */
+        .btn-clear {
+            background: rgba(230, 57, 70, 0.1); color: var(--danger); border: 1px solid rgba(230, 57, 70, 0.2);
+            padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+            cursor: pointer; margin-bottom: 16px; align-self: flex-end; display: inline-block; width: auto;
+        }
+        .btn-clear:active { background: rgba(230, 57, 70, 0.2); }
+        .hist-item {
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center; padding-right: 12px; 
+        }
+        .hist-item-content { flex: 1; padding: 16px; cursor: pointer; }
+        .hist-item-content:active { opacity: 0.7; }
+        .hist-expr { font-size: 15px; color: var(--text-dim); margin-bottom: 4px; word-break: break-all; }
+        .hist-res { font-size: 22px; color: var(--primary); font-weight: 500; margin-bottom: 4px; word-break: break-all; }
+        .hist-time { font-size: 11px; color: var(--text-dim); opacity: 0.7; }
+        .hist-del { color: var(--text-dim); cursor: pointer; padding: 12px; display: flex; align-items: center; border-radius: 50%; }
+        .hist-del:active { color: var(--danger); background: var(--surface-active); }
+
+        /* --- CONVERTER & FINANCE GRIDS --- */
+        .grid-layout { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 0 20px 24px; }
+        .tool-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; box-shadow: inset 0 0 0 transparent, 0 4px 10px rgba(0,0,0,0.03); }
+        [data-theme="dark"] .tool-card { box-shadow: inset 0 0 0 transparent, 0 4px 10px rgba(0,0,0,0.1); }
+        .tool-card:active { transform: translateY(2px); background: var(--surface-hover); }
+        .tool-icon { width: 40px; height: 40px; margin-bottom: 12px; background: rgba(0, 136, 170, 0.1); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: var(--primary); box-shadow: 0 0 15px rgba(0, 136, 170, 0.1); }
+        [data-theme="dark"] .tool-icon { background: rgba(0, 210, 255, 0.1); box-shadow: 0 0 15px rgba(0, 210, 255, 0.15); }
+        .tool-icon svg { width: 20px; height: 20px; fill: currentColor; }
+        .tool-label { font-size: 14px; font-weight: 500; }
+
+        /* --- SMART BUDGET PLANNER UI --- */
+        .info-card {
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 16px; margin-bottom: 20px; line-height: 1.5;
+        }
+        .budget-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        .budget-card {
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 16px 8px; text-align: center; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03); opacity: 0; transform: translateY(10px); transition: 0.4s ease;
+        }
+        [data-theme="dark"] .budget-card { box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .budget-card.show { opacity: 1; transform: translateY(0); }
+        .bdg-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; font-size: 14px; }
+        .bdg-label { font-size: 12px; color: var(--text-dim); margin-bottom: 4px; font-weight: 500; }
+        .bdg-amt { font-size: 16px; font-weight: 600; color: var(--text); }
+        
+        /* Specific Card Accents */
+        .bdg-needs .bdg-icon { background: rgba(0, 136, 170, 0.1); color: var(--primary); }
+        [data-theme="dark"] .bdg-needs .bdg-icon { background: rgba(0, 210, 255, 0.1); }
+        .bdg-wants .bdg-icon { background: rgba(244, 162, 97, 0.1); color: var(--warning); }
+        .bdg-saves .bdg-icon { background: rgba(42, 157, 143, 0.1); color: var(--success); }
+
+        .progress-bg { width: 100%; height: 8px; background: var(--surface-active); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); border-radius: 4px; }
+
+        /* --- GPA CALCULATOR --- */
+        .gpa-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+        .gpa-sub { flex: 2; min-width: 0; }
+        .gpa-grade { flex: 1.2; min-width: 75px; }
+        .gpa-cred { flex: 1; min-width: 60px; text-align: center; padding-left: 5px; padding-right: 5px;}
+        .gpa-del-row {
+            width: 32px; height: 32px; background: rgba(230,57,70,0.1); color: var(--danger);
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; font-weight: bold; flex-shrink: 0; transition: 0.2s;
+        }
+        .gpa-del-row:active { background: rgba(230,57,70,0.2); transform: scale(0.9); }
+
+        /* --- 3. EXPENSE TRACKER --- */
+        #screen-expense { overflow: hidden; }
+        .expense-summary { flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px 20px; }
+        .summary-card { background: linear-gradient(145deg, var(--surface), var(--bg-app)); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; }
+        .summary-label { font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+        .summary-val { font-size: 18px; font-weight: 600; color: var(--primary); }
+        .filter-tabs { flex: 0 0 auto; display: flex; gap: 10px; padding: 0 20px 10px; overflow-x: auto; scrollbar-width: none; }
+        .filter-tabs::-webkit-scrollbar { display: none; }
+        .filter-tab { padding: 6px 16px; border-radius: 20px; font-size: 13px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer; white-space: nowrap; }
+        .filter-tab.active { background: rgba(0,136,170,0.1); color: var(--primary); border-color: var(--primary); }
+        [data-theme="dark"] .filter-tab.active { background: rgba(0,210,255,0.1); }
+        .expense-list { flex: 1; overflow-y: auto; padding: 10px 20px 20px; }
+        .empty-state { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 14px; }
+        
+        .expense-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border-radius: var(--radius-sm); margin-bottom: 10px; border: 1px solid transparent; }
+        .expense-left { display: flex; align-items: center; gap: 12px; }
+        .expense-icon { width: 36px; height: 36px; background: rgba(0,0,0,0.05); border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+        [data-theme="dark"] .expense-icon { background: rgba(255,255,255,0.05); }
+        .expense-title { font-size: 14px; font-weight: 500; }
+        .expense-date { font-size: 11px; color: var(--text-dim); }
+        .expense-right { display: flex; align-items: center; gap: 10px; }
+        .expense-amt { font-size: 15px; font-weight: 600; color: var(--danger); }
+        .expense-del { color: var(--text-dim); cursor: pointer; display: flex; align-items: center; padding: 6px; border-radius: 50%; transition: 0.2s;}
+        .expense-del:active { color: var(--danger); background: var(--surface-active); }
+        
+        .fab { position: absolute; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; justify-content: center; align-items: center; font-size: 28px; box-shadow: 0 4px 15px var(--primary-glow); cursor: pointer; z-index: 10; }
+        [data-theme="dark"] .fab { color: #000; }
+        .fab:active { transform: scale(0.9); }
+
+        /* --- CONFIRMATION MODAL --- */
+        .confirm-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 200;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        }
+        .confirm-modal.active { opacity: 1; pointer-events: auto; }
+        .confirm-box {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 24px; width: 80%; max-width: 320px;
+            transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        [data-theme="dark"] .confirm-box { box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        .confirm-modal.active .confirm-box { transform: scale(1); }
+        .confirm-text { font-size: 16px; margin-bottom: 24px; color: var(--text); font-weight: 500; line-height: 1.4; }
+        .confirm-actions { display: flex; gap: 12px; }
+        .btn-confirm-cancel { flex: 1; background: var(--surface-active); color: var(--text); border: none; padding: 12px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s;}
+        .btn-confirm-cancel:active { filter: brightness(0.9); }
+        .btn-confirm-delete { flex: 1; background: rgba(230, 57, 70, 0.1); color: var(--danger); border: 1px solid rgba(230, 57, 70, 0.2); padding: 12px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-confirm-delete:active { background: rgba(230, 57, 70, 0.2); }
+
+        /* --- 4. SETTINGS --- */
+        .settings-list { padding: 0 20px 24px; }
+        .settings-section { margin-bottom: 24px; }
+        .settings-title { font-size: 13px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px; }
+        .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border); cursor: pointer;}
+        .setting-item:last-child { border-bottom: none; }
+        .setting-label { font-size: 15px; }
+        .toggle { width: 44px; height: 24px; background: var(--surface-active); border-radius: 12px; position: relative; cursor: pointer; }
+        .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.3s; }
+        .toggle.active { background: var(--primary); }
+        .toggle.active::after { transform: translateX(20px); }
+
+        /* Theme Selector */
+        .theme-selector { display: flex; background: var(--surface-active); border-radius: var(--radius-sm); padding: 4px; margin-top: 10px; }
+        .theme-btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-dim); }
+        .theme-btn.active { background: var(--surface); color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); font-weight: 500; }
+        [data-theme="dark"] .theme-btn.active { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+
+        /* --- SUB-SCREENS --- */
+        .sub-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 100; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }
+        .sub-screen.active { transform: translateX(0); }
+        .sub-header { display: flex; align-items: center; padding: 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .btn-back { font-size: 24px; color: var(--primary); cursor: pointer; margin-right: 16px; }
+        .sub-title { font-size: 18px; font-weight: 500; }
+        .sub-content { padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+        .input-control { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 16px; border-radius: var(--radius-sm); font-size: 16px; outline: none; }
+        .input-control:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0,136,170,0.1); }
+        [data-theme="dark"] .input-control:focus { box-shadow: 0 0 0 2px rgba(0,210,255,0.1); }
+        select.input-control { appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill="%23888" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>'); background-repeat: no-repeat; background-position: right 10px center; }
+        .result-box { background: linear-gradient(145deg, rgba(0,136,170,0.05), transparent); border: 1px solid rgba(0,136,170,0.1); border-radius: var(--radius-md); padding: 20px; text-align: center; margin-top: 20px; }
+        [data-theme="dark"] .result-box { background: linear-gradient(145deg, rgba(0,210,255,0.1), transparent); border-color: rgba(0,210,255,0.2); }
+        .result-val { font-size: 28px; font-weight: 600; color: var(--primary); margin: 5px 0; word-break: break-all; }
+        .btn-primary { width: 100%; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); padding: 16px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        [data-theme="dark"] .btn-primary { color: #000; }
+        .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .cat-item { background: var(--surface); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-sm); text-align: center; cursor: pointer; }
+        .cat-item.active { background: rgba(0,136,170,0.1); border-color: var(--primary); color: var(--primary); }
+        [data-theme="dark"] .cat-item.active { background: rgba(0,210,255,0.1); }
+
+        /* --- PRIVACY POLICY STYLES --- */
+        .privacy-card {
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 20px; margin-bottom: 16px;
+        }
+        .privacy-title {
+            font-size: 16px; font-weight: 600; color: var(--primary); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .privacy-text {
+            font-size: 14px; color: var(--text-dim); line-height: 1.6;
+        }
+        .privacy-list {
+            margin-top: 8px; padding-left: 20px; color: var(--text-dim); font-size: 14px; line-height: 1.6;
+        }
+        .privacy-list li { margin-bottom: 4px; }
+
+        /* --- BOTTOM NAVIGATION --- */
+        .bottom-nav { height: var(--nav-height); flex-shrink: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; position: relative; z-index: 50; }
+        [data-theme="dark"] .bottom-nav { background: rgba(10, 11, 14, 0.95); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; height: 100%; cursor: pointer; color: var(--text-dim); position: relative; }
+        .nav-item svg { width: 22px; height: 22px; fill: currentColor; margin-bottom: 4px; transition: transform 0.3s; }
+        .nav-item span { font-size: 10px; font-weight: 500; opacity: 0; transition: opacity 0.3s; position: absolute; bottom: 10px; white-space: nowrap;}
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active svg { transform: translateY(-8px); filter: drop-shadow(0 0 5px var(--primary-glow)); }
+        .nav-item.active span { opacity: 1; }
+        .nav-indicator { position: absolute; top: 0; left: 0; width: 40px; height: 4px; background: var(--primary); border-radius: 0 0 4px 4px; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 2px 10px var(--primary-glow); }
+    </style>
+</head>
+<body>
+
+<script>
+    const savedTheme = localStorage.getItem('calc_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
+
+<div id="app-container">
+    <div id="main-content">
+        <div id="screen-calc" class="screen active">
+            <div class="calc-display">
+                <div id="deg-rad-btn" class="deg-rad-toggle" onclick="toggleDegRad()">DEG</div>
+                <div id="calc-expr" class="calc-expr"></div>
+                <div class="calc-current" id="calc-current">0</div>
+            </div>
+            <div class="calc-tabs">
+                <div id="tab-standard" class="calc-tab active" onclick="switchCalcMode('Standard')">Standard</div>
+                <div id="tab-scientific" class="calc-tab" onclick="switchCalcMode('Scientific')">Scientific</div>
+                <div id="tab-history" class="calc-tab" onclick="openHistoryPage()">History</div>
+            </div>
+
+            <div id="keypad-standard" class="calc-keypad">
+                <div class="btn special" onclick="calcInput('C')">C</div>
+                <div class="btn op" onclick="calcInput('(')">(</div>
+                <div class="btn op" onclick="calcInput(')')">)</div>
+                <div class="btn op" onclick="calcInput('/')">÷</div>
+                
+                <div class="btn" onclick="calcInput('7')">7</div>
+                <div class="btn" onclick="calcInput('8')">8</div>
+                <div class="btn" onclick="calcInput('9')">9</div>
+                <div class="btn op" onclick="calcInput('*')">×</div>
+                
+                <div class="btn" onclick="calcInput('4')">4</div>
+                <div class="btn" onclick="calcInput('5')">5</div>
+                <div class="btn" onclick="calcInput('6')">6</div>
+                <div class="btn op" onclick="calcInput('-')">−</div>
+                
+                <div class="btn" onclick="calcInput('1')">1</div>
+                <div class="btn" onclick="calcInput('2')">2</div>
+                <div class="btn" onclick="calcInput('3')">3</div>
+                <div class="btn op" onclick="calcInput('+')">+</div>
+                
+                <div class="btn" onclick="calcInput('0')">0</div>
+                <div class="btn" onclick="calcInput('.')">.</div>
+                <div class="btn special" onclick="calcInput('DEL')">⌫</div>
+                <div class="btn eq" onclick="calcInput('=')">=</div>
+            </div>
+
+            <div id="keypad-scientific" class="calc-keypad" style="display: none;">
+                <div class="btn sci" onclick="calcInput('sin(')">sin</div>
+                <div class="btn sci" onclick="calcInput('cos(')">cos</div>
+                <div class="btn sci" onclick="calcInput('tan(')">tan</div>
+                <div class="btn sci" onclick="calcInput('log(')">log</div>
+                <div class="btn sci" onclick="calcInput('ln(')">ln</div>
+                
+                <div class="btn sci" onclick="calcInput('^')">xʸ</div>
+                <div class="btn special" onclick="calcInput('C')">C</div>
+                <div class="btn op" onclick="calcInput('(')">(</div>
+                <div class="btn op" onclick="calcInput(')')">)</div>
+                <div class="btn op" onclick="calcInput('/')">÷</div>
+                
+                <div class="btn sci" onclick="calcInput('√(')">√</div>
+                <div class="btn" onclick="calcInput('7')">7</div>
+                <div class="btn" onclick="calcInput('8')">8</div>
+                <div class="btn" onclick="calcInput('9')">9</div>
+                <div class="btn op" onclick="calcInput('*')">×</div>
+                
+                <div class="btn sci" onclick="calcInput('^')">^</div>
+                <div class="btn" onclick="calcInput('4')">4</div>
+                <div class="btn" onclick="calcInput('5')">5</div>
+                <div class="btn" onclick="calcInput('6')">6</div>
+                <div class="btn op" onclick="calcInput('-')">−</div>
+                
+                <div class="btn sci" onclick="calcInput('π')">π</div>
+                <div class="btn" onclick="calcInput('1')">1</div>
+                <div class="btn" onclick="calcInput('2')">2</div>
+                <div class="btn" onclick="calcInput('3')">3</div>
+                <div class="btn op" onclick="calcInput('+')">+</div>
+                
+                <div class="btn sci" onclick="calcInput('e')">e</div>
+                <div class="btn" onclick="calcInput('0')">0</div>
+                <div class="btn" onclick="calcInput('.')">.</div>
+                <div class="btn special" onclick="calcInput('DEL')">⌫</div>
+                <div class="btn eq" onclick="calcInput('=')">=</div>
+            </div>
+        </div>
+
+        <div id="screen-converter" class="screen">
+            <div class="title-bar">Converter</div>
+            <div class="subtitle">Quick conversions and calculators</div>
+            <div class="grid-layout" id="converter-grid"></div>
+        </div>
+
+        <div id="screen-finance" class="screen">
+            <div class="title-bar">Finance</div>
+            <div class="subtitle">Tax and budget tools</div>
+            <div class="grid-layout" id="finance-grid"></div>
+        </div>
+
+        <div id="screen-expense" class="screen">
+            <div class="title-bar">Expenses</div>
+            <div class="expense-summary">
+                <div class="summary-card"><div class="summary-label">Today</div><div class="summary-val" id="exp-today">₹0</div></div>
+                <div class="summary-card"><div class="summary-label">This Week</div><div class="summary-val" id="exp-week">₹0</div></div>
+                <div class="summary-card"><div class="summary-label">This Month</div><div class="summary-val" id="exp-month">₹0</div></div>
+                <div class="summary-card"><div class="summary-label">This Year</div><div class="summary-val" id="exp-year">₹0</div></div>
+            </div>
+            <div class="filter-tabs">
+                <div class="filter-tab active" onclick="filterExp('All')">All</div>
+                <div class="filter-tab" onclick="filterExp('Today')">Today</div>
+                <div class="filter-tab" onclick="filterExp('Month')">Month</div>
+            </div>
+            <div class="expense-list" id="expense-list"></div>
+            <div class="fab" onclick="openExpenseModal()">+</div>
+        </div>
+
+        <div id="screen-settings" class="screen">
+            <div class="title-bar">Settings</div>
+            <div class="subtitle">Manage your preferences and app information.</div>
+            <div class="settings-list">
+                <div class="settings-section">
+                    <div class="settings-title">Appearance</div>
+                    <div class="settings-card" style="padding: 10px;">
+                        <div class="theme-selector">
+                            <div class="theme-btn" id="btn-theme-light" onclick="setTheme('light')">☀️ Light Mode</div>
+                            <div class="theme-btn" id="btn-theme-dark" onclick="setTheme('dark')">🌙 Dark Mode</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-title">Calculator</div>
+                    <div class="settings-card">
+                        <div class="setting-item" onclick="toggleAutoCalc(this.querySelector('.toggle'))">
+                            <span class="setting-label">Auto Calculate</span>
+                            <div id="toggle-autocalc" class="toggle"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-title">Smart Features</div>
+                    <div class="settings-card">
+                        <div class="setting-item" onclick="this.querySelector('.toggle').classList.toggle('active')">
+                            <span class="setting-label">Smart Input Logic</span>
+                            <div class="toggle active"></div>
+                        </div>
+                        <div class="setting-item" onclick="this.querySelector('.toggle').classList.toggle('active')">
+                            <span class="setting-label">Equation Solver</span>
+                            <div class="toggle"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-title">About</div>
+                    <div class="settings-card">
+                        <div class="setting-item"><span class="setting-label">Version 1.0.0</span></div>
+                        <div class="setting-item" onclick="openPrivacyPolicy()">
+                            <span class="setting-label">Privacy Policy</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sub-screen" class="sub-screen">
+        <div class="sub-header">
+            <div class="btn-back" onclick="closeSubScreen()">←</div>
+            <div class="sub-title" id="sub-title">Tool</div>
+        </div>
+        <div class="sub-content" id="sub-content"></div>
+    </div>
+
+    <div id="confirm-modal" class="confirm-modal">
+        <div class="confirm-box">
+            <div class="confirm-text">Do you want to delete this expense?</div>
+            <div class="confirm-actions">
+                <button class="btn-confirm-cancel" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn-confirm-delete" onclick="confirmDeleteExpense()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-indicator" id="nav-indicator"></div>
+        <div class="nav-item active" onclick="switchTab(0, 'screen-calc', this)">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-6 14H7v-2h6v2zm0-4H7v-2h6v2zm6-4H5V5h14v4z"/></svg>
+            <span>Calculator</span>
+        </div>
+        <div class="nav-item" onclick="switchTab(1, 'screen-converter', this)">
+            <svg viewBox="0 0 24 24"><path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z"/></svg>
+            <span>Convert</span>
+        </div>
+        <div class="nav-item" onclick="switchTab(2, 'screen-finance', this)">
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v2h18V5l-9-4zM3 19h18v2H3v-2zm12-10h2v7h-2V9zm-4 0h2v7h-2V9zm-4 0h2v7H7V9z"/></svg>
+            <span>Finance</span>
+        </div>
+        <div class="nav-item" onclick="switchTab(3, 'screen-expense', this)">
+            <svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+            <span>Expense</span>
+        </div>
+        <div class="nav-item" onclick="switchTab(4, 'screen-settings', this)">
+            <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            <span>Settings</span>
+        </div>
+    </nav>
+</div>
+
+<script>
+    /* ==============================
+       THEME MANAGEMENT
+       ============================== */
+    function setTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('calc_theme', t);
+        document.getElementById('btn-theme-light').classList.toggle('active', t === 'light');
+        document.getElementById('btn-theme-dark').classList.toggle('active', t === 'dark');
+    }
+    document.getElementById('btn-theme-' + savedTheme).classList.add('active');
+
+    /* ==============================
+       CORE UI & NAVIGATION
+       ============================== */
+    function switchTab(index, screenId, el) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        el.classList.add('active');
+        
+        const indicator = document.getElementById('nav-indicator');
+        const itemWidth = el.offsetWidth;
+        const offset = el.offsetLeft + (itemWidth / 2) - 20;
+        indicator.style.transform = `translateX(${offset}px)`;
+        closeSubScreen();
+    }
+    
+    window.addEventListener('load', updateIndicator);
+    window.addEventListener('resize', updateIndicator);
+    function updateIndicator() {
+        const activeNav = document.querySelector('.nav-item.active');
+        if (activeNav) {
+            const itemWidth = activeNav.offsetWidth;
+            const offset = activeNav.offsetLeft + (itemWidth / 2) - 20;
+            document.getElementById('nav-indicator').style.transform = `translateX(${offset}px)`;
+        }
+    }
+
+    function switchCalcMode(mode) {
+        document.getElementById('tab-standard').classList.remove('active');
+        document.getElementById('tab-scientific').classList.remove('active');
+        
+        document.getElementById('keypad-standard').style.display = 'none';
+        document.getElementById('keypad-scientific').style.display = 'none';
+        document.getElementById('deg-rad-btn').style.display = 'none';
+        
+        if (mode === 'Standard') {
+            document.getElementById('tab-standard').classList.add('active');
+            document.getElementById('keypad-standard').style.display = 'grid';
+        } else if (mode === 'Scientific') {
+            document.getElementById('tab-scientific').classList.add('active');
+            document.getElementById('keypad-scientific').style.display = 'grid';
+            document.getElementById('deg-rad-btn').style.display = 'block';
+        }
+    }
+
+    function openSubScreen(title, contentHTML) {
+        document.getElementById('sub-title').innerText = title;
+        document.getElementById('sub-content').innerHTML = contentHTML;
+        document.getElementById('sub-screen').classList.add('active');
+    }
+    function closeSubScreen() { document.getElementById('sub-screen').classList.remove('active'); }
+
+    /* ==============================
+       CALCULATOR ENGINE
+       ============================== */
+    let expr = '';
+    let liveResult = '0';
+    let isEvaluated = false;
+    let isDeg = true;
+    let calcHistory = JSON.parse(localStorage.getItem('calcHistory')) || [];
+
+    let autoCalculate = JSON.parse(localStorage.getItem('autoCalc')) !== false; 
+    const autoCalcToggleBtn = document.getElementById('toggle-autocalc');
+    if(autoCalculate) autoCalcToggleBtn.classList.add('active');
+    else autoCalcToggleBtn.classList.remove('active');
+
+    window.toggleAutoCalc = function(el) {
+        autoCalculate = !autoCalculate;
+        localStorage.setItem('autoCalc', autoCalculate);
+        el.classList.toggle('active', autoCalculate);
+        updateDisplay();
+    };
+
+    function toggleDegRad() {
+        isDeg = !isDeg;
+        document.getElementById('deg-rad-btn').innerText = isDeg ? 'DEG' : 'RAD';
+        updateDisplay();
+    }
+
+    window.SIN = (x) => isDeg ? Math.sin(x * Math.PI / 180) : Math.sin(x);
+    window.COS = (x) => isDeg ? Math.cos(x * Math.PI / 180) : Math.cos(x);
+    window.TAN = (x) => isDeg ? Math.tan(x * Math.PI / 180) : Math.tan(x);
+    window.LOG = (x) => Math.log10(x);
+    window.LN = (x) => Math.log(x);
+    window.SQRT = (x) => Math.sqrt(x);
+
+    window.calcInput = function(val) {
+        const ops = ['+', '-', '*', '/', '^'];
+
+        if (val === 'C') {
+            expr = ''; liveResult = '0'; isEvaluated = false;
+        }
+        else if (val === 'DEL') {
+            if (isEvaluated) { expr = ''; liveResult = '0'; isEvaluated = false; }
+            else if (expr.length > 0) {
+                let funcMatch = expr.match(/(sin\(|cos\(|tan\(|log\(|ln\(|√\()$/);
+                if (funcMatch) expr = expr.slice(0, -funcMatch[0].length);
+                else expr = expr.slice(0, -1);
+            }
+        }
+        else if (val === '=') {
+            if (!expr) return;
+            let res = getEvaluatedResult(expr);
+            if (res !== '') {
+                saveHistory(expr, res);
+                liveResult = res;
+                isEvaluated = true; 
+            }
+        }
+        else if (ops.includes(val)) {
+            if (isEvaluated) {
+                expr = liveResult + val;
+                isEvaluated = false;
+            } else {
+                if (expr === '') {
+                    if (val === '-') expr = '-';
+                } else {
+                    let lastChar = expr.slice(-1);
+                    if (ops.includes(lastChar)) expr = expr.slice(0, -1) + val;
+                    else if (lastChar === '(' && val === '-') expr += val;
+                    else expr += val;
+                }
+            }
+        }
+        else if (val === '.') {
+            if (isEvaluated) { expr = '0.'; isEvaluated = false; }
+            else {
+                let match = expr.match(/[0-9.]+$/);
+                if (!match) expr += '0.';
+                else if (!match[0].includes('.')) expr += '.';
+            }
+        }
+        else {
+            if (isEvaluated) {
+                if (val === '^') expr = '0^'; 
+                else expr = val;
+                isEvaluated = false;
+            } else {
+                if (expr === '0' && !isNaN(val) && val !== '.') expr = val;
+                else expr += val;
+            }
+        }
+        updateDisplay();
+    }
+
+    function updateDisplay() {
+        const calcExprEl = document.getElementById('calc-expr');
+        const calcCurrEl = document.getElementById('calc-current');
+        
+        let displayExpr = expr.replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
+        calcExprEl.innerText = displayExpr;
+
+        if (expr === '') {
+            calcCurrEl.innerText = '0';
+            return;
+        }
+
+        if (isEvaluated) {
+            calcCurrEl.innerText = formatNumber(liveResult);
+        } else {
+            if (autoCalculate) {
+                let res = getEvaluatedResult(expr);
+                calcCurrEl.innerText = res !== '' ? formatNumber(res) : '';
+            } else {
+                calcCurrEl.innerText = '';
+            }
+        }
+
+        requestAnimationFrame(() => {
+            calcExprEl.scrollLeft = calcExprEl.scrollWidth;
+            calcCurrEl.scrollLeft = calcCurrEl.scrollWidth;
+        });
+    }
+
+    function getEvaluatedResult(evalStr) {
+        if (!evalStr) return '';
+        try {
+            let testStr = evalStr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+            testStr = testStr.replace(/[+\-*/^(]+$/, ''); 
+            if (!testStr) return '';
+            
+            let openP = (testStr.match(/\(/g) || []).length;
+            let closeP = (testStr.match(/\)/g) || []).length;
+            testStr += ')'.repeat(Math.max(0, openP - closeP));
+            
+            let parsedStr = testStr
+                .replace(/π/g, 'Math.PI')
+                .replace(/e/g, 'Math.E')
+                .replace(/\^/g, '**')
+                .replace(/sin\(/g, 'SIN(')
+                .replace(/cos\(/g, 'COS(')
+                .replace(/tan\(/g, 'TAN(')
+                .replace(/log\(/g, 'LOG(')
+                .replace(/ln\(/g, 'LN(')
+                .replace(/√\(/g, 'SQRT(');
+
+            parsedStr = parsedStr.replace(/(\d)(SIN|COS|TAN|LOG|LN|SQRT|Math\.PI|Math\.E|\()/g, '$1*$2');
+            parsedStr = parsedStr.replace(/\)(\d|SIN|COS|TAN|LOG|LN|SQRT|Math\.PI|Math\.E|\()/g, ')*$1');
+
+            if (/^[0-9+\-*/(). MathPISINCOSTANLOGLNSQRT*e]+$/.test(parsedStr.replace(/\*\*/g, ''))) {
+                let res = new Function('return ' + parsedStr)();
+                if (isNaN(res) || !isFinite(res)) return '';
+                res = Math.round(res * 10000000000) / 10000000000;
+                return res.toString();
+            }
+        } catch(e) { return ''; }
+        return '';
+    }
+
+    function formatNumber(numStr) {
+        if (!numStr || isNaN(numStr) || !isFinite(numStr)) return numStr;
+        let parts = numStr.toString().split('.');
+        if (parts[0] !== '-' && parts[0] !== '') parts[0] = parseInt(parts[0], 10).toLocaleString('en-IN');
+        return parts.join('.');
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(document.getElementById('screen-calc').classList.contains('active') && !document.getElementById('sub-screen').classList.contains('active')) {
+            const key = e.key;
+            if (/[0-9.]/.test(key)) calcInput(key);
+            else if (['+', '-', '*', '/', '^'].includes(key)) calcInput(key);
+            else if (key === 'Enter' || key === '=') { calcInput('='); e.preventDefault(); }
+            else if (key === 'Backspace') calcInput('DEL');
+            else if (key === 'Escape') calcInput('C');
+            else if (key === '(' || key === ')') calcInput(key);
+        }
+    });
+
+    /* ==============================
+       HISTORY PAGE
+       ============================== */
+    function saveHistory(hExpr, hRes) {
+        calcHistory.unshift({ id: Date.now(), expr: hExpr, res: hRes, timestamp: Date.now() });
+        if (calcHistory.length > 50) calcHistory.pop();
+        localStorage.setItem('calcHistory', JSON.stringify(calcHistory));
+    }
+
+    window.openHistoryPage = function() {
+        let listHTML = calcHistory.length === 0 ? `<div class="empty-state">No calculation history yet.</div>` : calcHistory.map((item, index) => {
+            const safeExpr = item.expr.replace(/'/g, "\\'");
+            const safeRes = item.res.toString().replace(/'/g, "\\'");
+            return `
+                <div class="hist-item">
+                    <div class="hist-item-content" onclick="restoreHistory('${safeExpr}', '${safeRes}')">
+                        <div class="hist-expr">${item.expr.replace(/\*/g, '×').replace(/\//g, '÷')}</div>
+                        <div class="hist-res">= ${formatNumber(item.res)}</div>
+                        <div class="hist-time">${new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    </div>
+                    <div class="hist-del" onclick="deleteHistoryItem(${index}, event)">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        let content = `
+            ${calcHistory.length > 0 ? `<button class="btn-clear" onclick="clearCalcHistory()">Clear All</button>` : ''}
+            <div id="history-list-container" style="display:flex; flex-direction:column; flex:1;">${listHTML}</div>
+        `;
+        openSubScreen('Calculation History', content);
+    }
+
+    window.restoreHistory = function(hExpr, hRes) {
+        expr = hExpr;
+        liveResult = hRes;
+        isEvaluated = true;
+        closeSubScreen();
+        switchTab(0, 'screen-calc', document.querySelector('.nav-item')); 
+        updateDisplay();
+    }
+
+    window.deleteHistoryItem = function(index, e) {
+        e.stopPropagation();
+        calcHistory.splice(index, 1);
+        localStorage.setItem('calcHistory', JSON.stringify(calcHistory));
+        openHistoryPage(); 
+    }
+
+    window.clearCalcHistory = function() {
+        calcHistory = [];
+        localStorage.setItem('calcHistory', JSON.stringify(calcHistory));
+        openHistoryPage();
+    }
+
+    /* ==============================
+       PRIVACY POLICY PAGE
+       ============================== */
+    window.openPrivacyPolicy = function() {
+        let content = `
+            <div class="privacy-card">
+                <div class="privacy-title"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg> Introduction</div>
+                <div class="privacy-text">This Privacy Policy describes how Calcore – Smart All-in-One Calculator Suite helps protect your privacy and provide a secure user experience.</div>
+            </div>
+            
+            <div class="privacy-card">
+                <div class="privacy-title"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg> Data Collection</div>
+                <div class="privacy-text">Calcore is designed with a privacy-first approach.</div>
+                <ul class="privacy-list">
+                    <li>No personal data is collected</li>
+                    <li>No account/login required</li>
+                    <li>No tracking of user activity</li>
+                    <li>No hidden analytics collection</li>
+                </ul>
+            </div>
+
+            <div class="privacy-card">
+                <div class="privacy-title"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg> Local Data Storage</div>
+                <div class="privacy-text">All app data is stored locally on your device only. This may include:</div>
+                <ul class="privacy-list">
+                    <li>Calculation history</li>
+                    <li>Expense tracker entries</li>
+                    <li>App preferences</li>
+                    <li>GPA calculator data</li>
+                </ul>
+                <div class="privacy-text" style="margin-top: 8px;"><b>Data never leaves the user’s device.</b></div>
+            </div>
+
+            <div class="privacy-card">
+                <div class="privacy-title"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg> Data Security & Third-Party</div>
+                <div class="privacy-text">This app does not use third-party analytics, advertising SDKs, or user tracking services. No personal information is shared or sold.<br><br>All stored information remains on the user’s device. Users may additionally protect their device using standard device security (PIN, Fingerprint, Face Unlock).</div>
+            </div>
+
+            <div class="privacy-card">
+                <div class="privacy-title"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg> User Data Control</div>
+                <div class="privacy-text">Users may:</div>
+                <ul class="privacy-list">
+                    <li>Clear app data</li>
+                    <li>Delete stored entries</li>
+                    <li>Reset application settings</li>
+                    <li>Uninstall the app at any time</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px; margin-bottom: 20px;">
+                <div style="font-size: 13px; color: var(--text-dim);">Contact for inquiries:</div>
+                <div style="font-size: 15px; font-weight: 500; color: var(--primary); margin-top: 5px;">nebulacorestudio@gmail.com</div>
+                <div style="font-size: 11px; color: var(--text-dim); margin-top: 20px;">This Privacy Policy may be updated in future app versions.</div>
+            </div>
+        `;
+        openSubScreen('Privacy Policy', content);
+    }
+
+    /* ==============================
+       OTHER TOOLS DATA & LOGIC
+       ============================== */
+    const svgIconMap = {
+        Length: '<svg viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2v8z"/></svg>',
+        Mass: '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm4.08 5H7.92c-.37 0-.69-.26-.78-.63-.33-1.4 1.76-2.37 4.86-2.37 3.09 0 5.18.96 4.86 2.37-.1.37-.41.63-.78.63z"/></svg>',
+        Temperature: '<svg viewBox="0 0 24 24"><path d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1v4h-2V5z"/></svg>',
+        BMI: '<svg viewBox="0 0 24 24"><path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-1 20v-5.5H8.5V11c0-1.1.9-2 2-2h3c1.1 0 2 .9 2 2v5.5H13V22h-2z"/></svg>',
+        Discount: '<svg viewBox="0 0 24 24"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.41l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.36-.36.59-.86.59-1.41s-.23-1.06-.59-1.41zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg>',
+        NumSystem: '<svg viewBox="0 0 24 24"><path d="M3 3h4v4H3zm6 0h4v4H9zm6 0h4v4h-4zm-12 6h4v4H3zm6 0h4v4H9zm6 0h4v4h-4zm-12 6h4v4H3zm6 0h4v4H9zm6 0h4v4h-4z"/></svg>',
+        GPA: '<svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2.12-1.15V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/></svg>',
+        GST: '<svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>',
+        Loan: '<svg viewBox="0 0 24 24"><path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1L2 6v2h20V6z"/></svg>',
+        Interest: '<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+        Budget: '<svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>'
+    };
+
+    const converters = {
+        Length: { m: 1, km: 0.001, cm: 100, mm: 1000, inch: 39.3701, ft: 3.28084 },
+        Mass: { kg: 1, g: 1000, mg: 1000000, lb: 2.20462, oz: 35.274 },
+        Volume: { liter: 1, ml: 1000, gallon: 0.264172 },
+        Area: { sq_m: 1, sq_km: 0.000001, sq_ft: 10.7639, acre: 0.000247105 },
+        Speed: { kmh: 1, mph: 0.621371, ms: 0.277778 },
+        Time: { sec: 1, min: 0.0166667, hr: 0.000277778, day: 0.0000115741 },
+        Data: { MB: 1, KB: 1024, GB: 0.0009765625, TB: 0.00000095367 }
+    };
+
+    const converterGrid = document.getElementById('converter-grid');
+    ['Length', 'Area', 'Mass', 'Volume', 'Data', 'Speed', 'Time', 'Temperature', 'BMI', 'Discount', 'NumSystem', 'GPA'].forEach(t => {
+        converterGrid.innerHTML += `<div class="tool-card" onclick="openTool('${t}')"><div class="tool-icon">${svgIconMap[t]||svgIconMap.Length}</div><div class="tool-label">${t==='NumSystem'?'Number System':t}</div></div>`;
+    });
+
+    const financeGrid = document.getElementById('finance-grid');
+    ['Budget', 'GST', 'Loan', 'Interest'].forEach(t => {
+        financeGrid.innerHTML += `<div class="tool-card" onclick="openTool('${t}')"><div class="tool-icon">${svgIconMap[t]}</div><div class="tool-label">${t==='Loan'?'Loan EMI':(t==='Budget'?'Smart Budget':t)}</div></div>`;
+    });
+
+    window.openTool = function(type) {
+        let html = '';
+        if (converters[type]) {
+            let opts = Object.keys(converters[type]).map(u => `<option value="${u}">${u}</option>`).join('');
+            html = `<div class="input-group"><label>From</label><input type="number" id="conv-in" class="input-control" placeholder="0" oninput="runConv('${type}')"><select id="conv-from" class="input-control" style="margin-top:8px" onchange="runConv('${type}')">${opts}</select></div><div class="input-group"><label>To</label><select id="conv-to" class="input-control" onchange="runConv('${type}')">${opts}</select></div><div class="result-box"><div class="result-val" id="conv-res">0</div></div>`;
+        } else if (type === 'Temperature') {
+            html = `<div class="input-group"><input type="number" id="temp-in" class="input-control" placeholder="Value" oninput="runTemp()"><select id="temp-from" class="input-control" style="margin-top:8px" onchange="runTemp()"><option value="C">Celsius</option><option value="F">Fahrenheit</option><option value="K">Kelvin</option></select></div><div class="input-group"><select id="temp-to" class="input-control" onchange="runTemp()"><option value="F">Fahrenheit</option><option value="C">Celsius</option><option value="K">Kelvin</option></select></div><div class="result-box"><div class="result-val" id="temp-res">0</div></div>`;
+        } else if (type === 'BMI') {
+            html = `<div class="input-group"><label>Weight (kg)</label><input type="number" id="bmi-w" class="input-control" oninput="runBMI()"></div><div class="input-group"><label>Height (cm)</label><input type="number" id="bmi-h" class="input-control" oninput="runBMI()"></div><div class="result-box"><div class="result-val" id="bmi-res">0</div><div id="bmi-cat" style="color:var(--text-dim); margin-top:5px;">Enter values</div></div>`;
+        } else if (type === 'Discount') {
+            html = `<div class="input-group"><label>Original Price</label><input type="number" id="disc-p" class="input-control" oninput="runDisc()"></div><div class="input-group"><label>Discount (%)</label><input type="number" id="disc-d" class="input-control" oninput="runDisc()"></div><div class="result-box"><div style="font-size:14px; color:var(--text-dim);">Final Price</div><div class="result-val" id="disc-res">0</div><div style="font-size:14px; color:var(--success); margin-top:5px;">You save: <span id="disc-save">0</span></div></div>`;
+        } else if (type === 'GST') {
+            html = `<div class="input-group"><label>Initial Amount</label><input type="number" id="gst-amt" class="input-control" oninput="runGST()"></div><div class="input-group"><label>GST Rate (%)</label><input type="number" id="gst-rate" class="input-control" value="18" oninput="runGST()"></div><div class="result-box"><div style="font-size:14px; color:var(--text-dim);">Net Amount</div><div class="result-val" id="gst-res">0</div><div style="font-size:14px; color:var(--danger); margin-top:5px;">GST Added: <span id="gst-tax">0</span></div></div>`;
+        } else if (type === 'Loan') {
+            html = `<div class="input-group"><label>Principal Amount (₹)</label><input type="number" id="emi-p" class="input-control" oninput="runEMI()"></div><div class="input-group"><label>Interest Rate (Annual %)</label><input type="number" id="emi-r" class="input-control" oninput="runEMI()"></div><div class="input-group"><label>Tenure (Months)</label><input type="number" id="emi-n" class="input-control" oninput="runEMI()"></div><div class="result-box"><div style="font-size:14px; color:var(--text-dim);">Monthly EMI</div><div class="result-val" id="emi-res">0</div><div style="font-size:14px; color:var(--text-dim); margin-top:5px;">Total Interest: <span id="emi-int" style="color:var(--danger);">0</span></div></div>`;
+        } else if (type === 'Interest') {
+            html = `<div class="input-group"><label>Calculation Type</label><select id="int-type" class="input-control" onchange="runInterest()"><option value="simple">Simple Interest</option><option value="compound">Compound Interest</option></select></div><div class="input-group"><label>Principal Amount (₹)</label><input type="number" id="int-p" class="input-control" oninput="runInterest()"></div><div class="input-group"><label>Interest Rate (% p.a.)</label><input type="number" id="int-r" class="input-control" oninput="runInterest()"></div><div class="input-group"><label>Time Period (Years)</label><input type="number" id="int-t" class="input-control" oninput="runInterest()"></div><div class="result-box"><div style="font-size:14px; color:var(--text-dim);">Total Amount</div><div class="result-val" id="int-res">0</div><div style="font-size:14px; color:var(--danger); margin-top:5px;">Total Interest: <span id="int-val">0</span></div></div>`;
+        } else if (type === 'NumSystem') {
+            html = `<div class="input-group"><label>Decimal</label><input type="text" id="ns-dec" class="input-control" oninput="runNS(10)"><label style="margin-top:10px">Binary</label><input type="text" id="ns-bin" class="input-control" oninput="runNS(2)"><label style="margin-top:10px">Hexadecimal</label><input type="text" id="ns-hex" class="input-control" oninput="runNS(16)"><label style="margin-top:10px">Octal</label><input type="text" id="ns-oct" class="input-control" oninput="runNS(8)"></div>`;
+        } else if (type === 'GPA') {
+            html = `
+                <div id="gpa-rows">
+                    ${getGpaRowHtml()}
+                    ${getGpaRowHtml()}
+                    ${getGpaRowHtml()}
+                    ${getGpaRowHtml()}
+                </div>
+                <button class="btn-primary" onclick="addGpaRow()">+ Add Subject</button>
+                <button class="btn-clear" onclick="resetGPA()" style="width:100%; margin-top:12px; margin-bottom:0;">Reset Values</button>
+                <div class="result-box">
+                    <div style="font-size:14px; color:var(--text-dim);">Your GPA</div>
+                    <div class="result-val" id="gpa-res">0.00</div>
+                </div>
+            `;
+        } else if (type === 'Budget') {
+            html = `
+                <div class="info-card">
+                    <div style="font-weight:600; margin-bottom:8px; font-size:16px;">50/30/20 Rule</div>
+                    <div style="font-size:13px; color:var(--text-dim); line-height:1.6;">
+                        A simple budgeting method to split your income:<br>
+                        • <b>Needs (50%)</b>: Bills, food, rent, essentials.<br>
+                        • <b>Wants (30%)</b>: Entertainment, shopping, travel.<br>
+                        • <b>Savings (20%)</b>: Emergency fund, investments.
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Monthly Salary / Income (₹)</label>
+                    <input type="number" id="bdg-income" class="input-control" placeholder="e.g. 30000">
+                </div>
+
+                <div class="input-group" style="display:flex; gap:10px;">
+                    <div style="flex:1;"><label>Needs %</label><input type="number" id="bdg-p1" class="input-control" value="50"></div>
+                    <div style="flex:1;"><label>Wants %</label><input type="number" id="bdg-p2" class="input-control" value="30"></div>
+                    <div style="flex:1;"><label>Save %</label><input type="number" id="bdg-p3" class="input-control" value="20"></div>
+                </div>
+
+                <button class="btn-primary" onclick="runBudget()">Calculate Budget</button>
+
+                <div id="bdg-results" class="budget-grid" style="display:none;">
+                    <div class="budget-card bdg-needs" id="card-needs">
+                        <div class="bdg-icon">🏠</div>
+                        <div class="bdg-label">Needs (<span id="lbl-needs">50</span>%)</div>
+                        <div class="bdg-amt" id="amt-needs">0</div>
+                    </div>
+                    <div class="budget-card bdg-wants" id="card-wants">
+                        <div class="bdg-icon">🎉</div>
+                        <div class="bdg-label">Wants (<span id="lbl-wants">30</span>%)</div>
+                        <div class="bdg-amt" id="amt-wants">0</div>
+                    </div>
+                    <div class="budget-card bdg-saves" id="card-saves">
+                        <div class="bdg-icon">📈</div>
+                        <div class="bdg-label">Savings (<span id="lbl-saves">20</span>%)</div>
+                        <div class="bdg-amt" id="amt-saves">0</div>
+                    </div>
+                </div>
+
+                <div id="bdg-advanced" style="display:none;">
+                    <div class="settings-title" style="margin-top:30px;">Emergency Fund</div>
+                    <div class="info-card" style="margin-bottom:10px;">
+                        <div style="font-size:13px; color:var(--text-dim);">Recommended (6 Months of Needs):</div>
+                        <div style="font-size:20px; font-weight:600; color:var(--primary); margin-top:5px;" id="bdg-emg">₹0</div>
+                    </div>
+
+                    <div class="settings-title" style="margin-top:30px;">Savings Goal Tracker</div>
+                    <div class="input-group">
+                        <input type="number" id="gl-target" class="input-control" placeholder="Goal Amount (₹)" oninput="runGoal()">
+                        <input type="number" id="gl-current" class="input-control" placeholder="Current Savings (₹)" style="margin-top:10px;" oninput="runGoal()">
+                    </div>
+                    <div class="progress-bg"><div class="progress-fill" id="gl-bar"></div></div>
+                    <div style="text-align:right; font-size:12px; color:var(--text-dim); margin-top:5px;"><span id="gl-pct">0</span>% Completed</div>
+
+                    <div class="settings-title" style="margin-top:30px;">SIP / Investment Estimator</div>
+                    <div class="input-group"><input type="number" id="sip-m" class="input-control" placeholder="Monthly Investment (₹)" oninput="runSIP()"></div>
+                    <div class="input-group" style="display:flex; gap:10px;">
+                        <div style="flex:1;"><input type="number" id="sip-y" class="input-control" placeholder="Years" oninput="runSIP()"></div>
+                        <div style="flex:1;"><input type="number" id="sip-r" class="input-control" placeholder="Est. Return %" oninput="runSIP()"></div>
+                    </div>
+                    <div class="result-box" style="margin-top:0;">
+                        <div style="font-size:14px; color:var(--text-dim);">Estimated Future Value</div>
+                        <div class="result-val" id="sip-res">₹0</div>
+                    </div>
+                </div>
+            `;
+        }
+        openSubScreen(type === 'NumSystem' ? 'Number System' : (type === 'Loan' ? 'Loan EMI' : (type === 'Interest' ? 'Interest Calculator' : (type === 'GPA' ? 'GPA Calculator' : (type === 'Budget' ? 'Smart Budget Planner' : type)))), html);
+    }
+
+    /* Animation Function for Count-Up */
+    window.animateValue = function(obj, start, end, duration) {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            obj.innerHTML = '₹' + Math.floor(progress * (end - start) + start).toLocaleString('en-IN');
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    /* Budget Planner Logic */
+    window.runBudget = function() {
+        let inc = parseFloat(document.getElementById('bdg-income').value);
+        if(isNaN(inc) || inc <= 0) return alert('Please enter a valid monthly income.');
+
+        let p1 = parseFloat(document.getElementById('bdg-p1').value) || 0;
+        let p2 = parseFloat(document.getElementById('bdg-p2').value) || 0;
+        let p3 = parseFloat(document.getElementById('bdg-p3').value) || 0;
+
+        if(p1 + p2 + p3 !== 100) return alert('Your budget percentages must equal 100%.');
+
+        let needs = inc * (p1 / 100);
+        let wants = inc * (p2 / 100);
+        let saves = inc * (p3 / 100);
+
+        document.getElementById('lbl-needs').innerText = p1;
+        document.getElementById('lbl-wants').innerText = p2;
+        document.getElementById('lbl-saves').innerText = p3;
+
+        document.getElementById('bdg-results').style.display = 'grid';
+        document.getElementById('bdg-advanced').style.display = 'block';
+
+        setTimeout(() => {
+            document.getElementById('card-needs').classList.add('show');
+            animateValue(document.getElementById('amt-needs'), 0, needs, 800);
+        }, 100);
+        setTimeout(() => {
+            document.getElementById('card-wants').classList.add('show');
+            animateValue(document.getElementById('amt-wants'), 0, wants, 800);
+        }, 250);
+        setTimeout(() => {
+            document.getElementById('card-saves').classList.add('show');
+            animateValue(document.getElementById('amt-saves'), 0, saves, 800);
+        }, 400);
+
+        // Emergency Fund (6 months of needs)
+        document.getElementById('bdg-emg').innerText = '₹' + (needs * 6).toLocaleString('en-IN');
+    }
+
+    window.runGoal = function() {
+        let tgt = parseFloat(document.getElementById('gl-target').value);
+        let cur = parseFloat(document.getElementById('gl-current').value);
+        if(isNaN(tgt) || tgt <= 0) return;
+        if(isNaN(cur)) cur = 0;
+        let pct = Math.min((cur / tgt) * 100, 100);
+        document.getElementById('gl-bar').style.width = pct + '%';
+        document.getElementById('gl-pct').innerText = pct.toFixed(1);
+    }
+
+    window.runSIP = function() {
+        let m = parseFloat(document.getElementById('sip-m').value);
+        let y = parseFloat(document.getElementById('sip-y').value);
+        let r = parseFloat(document.getElementById('sip-r').value);
+        if(isNaN(m) || isNaN(y) || isNaN(r)) return;
+        
+        let months = y * 12;
+        let rate = r / 12 / 100;
+        let fv = m * ((Math.pow(1 + rate, months) - 1) / rate) * (1 + rate);
+        document.getElementById('sip-res').innerText = '₹' + Math.round(fv).toLocaleString('en-IN');
+    }
+
+    /* GPA Logic */
+    window.getGpaRowHtml = function() {
+        return `
+        <div class="gpa-row">
+            <input type="text" class="input-control gpa-sub" placeholder="Subject">
+            <select class="input-control gpa-grade" onchange="runGPA()">
+                <option value="10" selected>A+ (10)</option>
+                <option value="9">A (9)</option>
+                <option value="8">B+ (8)</option>
+                <option value="7">B (7)</option>
+                <option value="6">C (6)</option>
+                <option value="5">D (5)</option>
+                <option value="0">F (0)</option>
+            </select>
+            <input type="number" class="input-control gpa-cred" placeholder="Cr" oninput="runGPA()">
+            <div class="gpa-del-row" onclick="removeGpaRow(this)">×</div>
+        </div>`;
+    }
+    window.addGpaRow = function() {
+        document.getElementById('gpa-rows').insertAdjacentHTML('beforeend', getGpaRowHtml());
+    }
+    window.removeGpaRow = function(el) {
+        el.parentElement.remove();
+        runGPA();
+    }
+    window.resetGPA = function() {
+        document.getElementById('gpa-rows').innerHTML = getGpaRowHtml() + getGpaRowHtml() + getGpaRowHtml() + getGpaRowHtml();
+        runGPA();
+    }
+    window.runGPA = function() {
+        let totalPts = 0, totalCr = 0;
+        document.querySelectorAll('.gpa-row').forEach(row => {
+            let g = parseFloat(row.querySelector('.gpa-grade').value);
+            let c = parseFloat(row.querySelector('.gpa-cred').value);
+            if (!isNaN(g) && !isNaN(c) && c > 0) {
+                totalPts += (g * c);
+                totalCr += c;
+            }
+        });
+        document.getElementById('gpa-res').innerText = totalCr > 0 ? (totalPts / totalCr).toFixed(2) : '0.00';
+    }
+
+    window.runConv = function(type) {
+        let val = parseFloat(document.getElementById('conv-in').value);
+        if(isNaN(val)) return document.getElementById('conv-res').innerText = '0';
+        let res = (val / converters[type][document.getElementById('conv-from').value]) * converters[type][document.getElementById('conv-to').value];
+        document.getElementById('conv-res').innerText = Math.round(res * 10000) / 10000;
+    }
+    window.runTemp = function() {
+        let val = parseFloat(document.getElementById('temp-in').value);
+        if(isNaN(val)) return document.getElementById('temp-res').innerText = '0';
+        let f = document.getElementById('temp-from').value, t = document.getElementById('temp-to').value;
+        let c = f === 'F' ? (val - 32) * 5/9 : (f === 'K' ? val - 273.15 : val);
+        let res = t === 'F' ? (c * 9/5) + 32 : (t === 'K' ? c + 273.15 : c);
+        document.getElementById('temp-res').innerText = Math.round(res * 100) / 100;
+    }
+    window.runBMI = function() {
+        let w = parseFloat(document.getElementById('bmi-w').value), h = parseFloat(document.getElementById('bmi-h').value) / 100;
+        if(!w || !h) return;
+        let bmi = w / (h * h), cat = bmi < 18.5 ? 'Underweight' : (bmi >= 30 ? 'Obese' : (bmi > 25 ? 'Overweight' : 'Normal'));
+        document.getElementById('bmi-res').innerText = bmi.toFixed(1);
+        document.getElementById('bmi-cat').innerText = cat;
+        document.getElementById('bmi-cat').style.color = cat === 'Normal' ? 'var(--success)' : 'var(--danger)';
+    }
+    window.runDisc = function() {
+        let p = parseFloat(document.getElementById('disc-p').value), d = parseFloat(document.getElementById('disc-d').value);
+        if(isNaN(p) || isNaN(d)) return;
+        document.getElementById('disc-res').innerText = '₹' + (p - p*(d/100)).toFixed(2);
+        document.getElementById('disc-save').innerText = '₹' + (p*(d/100)).toFixed(2);
+    }
+    window.runGST = function() {
+        let a = parseFloat(document.getElementById('gst-amt').value), r = parseFloat(document.getElementById('gst-rate').value);
+        if(isNaN(a) || isNaN(r)) return;
+        document.getElementById('gst-res').innerText = '₹' + (a + a*(r/100)).toFixed(2);
+        document.getElementById('gst-tax').innerText = '₹' + (a*(r/100)).toFixed(2);
+    }
+    window.runEMI = function() {
+        let p = parseFloat(document.getElementById('emi-p').value), r = parseFloat(document.getElementById('emi-r').value) / 1200, n = parseFloat(document.getElementById('emi-n').value);
+        if(!p || !r || !n) return;
+        let emi = (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+        document.getElementById('emi-res').innerText = '₹' + Math.round(emi).toLocaleString('en-IN');
+        document.getElementById('emi-int').innerText = '₹' + Math.round(emi * n - p).toLocaleString('en-IN');
+    }
+    window.runInterest = function() {
+        let type = document.getElementById('int-type').value;
+        let p = parseFloat(document.getElementById('int-p').value);
+        let r = parseFloat(document.getElementById('int-r').value);
+        let t = parseFloat(document.getElementById('int-t').value);
+        if(!p || !r || !t) return;
+        let interest = 0, total = 0;
+        if(type === 'simple') {
+            interest = (p * r * t) / 100;
+            total = p + interest;
+        } else {
+            total = p * Math.pow(1 + (r / 100), t);
+            interest = total - p;
+        }
+        document.getElementById('int-res').innerText = '₹' + Math.round(total).toLocaleString('en-IN');
+        document.getElementById('int-val').innerText = '₹' + Math.round(interest).toLocaleString('en-IN');
+    }
+    window.runNS = function(base) {
+        let m = {10:'dec', 2:'bin', 16:'hex', 8:'oct'}, v = document.getElementById('ns-'+m[base]).value;
+        if(!v) return ['dec','bin','hex','oct'].forEach(k => document.getElementById('ns-'+k).value = '');
+        try {
+            let dec = parseInt(v, base);
+            if(isNaN(dec)) return;
+            Object.keys(m).forEach(b => { if(parseInt(b) !== base) document.getElementById('ns-'+m[b]).value = dec.toString(b).toUpperCase(); });
+        } catch(e){}
+    }
+
+    /* ==============================
+       EXPENSE TRACKER LOGIC
+       ============================== */
+    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+    let selectedCat = 'Food';
+    const catIcons = { Food:'🍔', Travel:'🚗', Bills:'📄', Shopping:'🛍️', Others:'📦', Movie:'🎬' };
+    let expenseToDelete = null;
+
+    function renderExpenses(filter = 'All') {
+        const list = document.getElementById('expense-list'); list.innerHTML = '';
+        let today = new Date().toDateString(), month = new Date().getMonth();
+        let filtered = expenses.filter(e => filter === 'Today' ? new Date(e.date).toDateString() === today : (filter === 'Month' ? new Date(e.date).getMonth() === month : true));
+        
+        if (!filtered.length) list.innerHTML = `<div class="empty-state">No expenses found.</div>`;
+        else filtered.forEach(e => {
+            list.innerHTML += `
+                <div class="expense-item">
+                    <div class="expense-left">
+                        <div class="expense-icon">${catIcons[e.category]||'📦'}</div>
+                        <div>
+                            <div class="expense-title">${e.category}</div>
+                            <div class="expense-date">${new Date(e.date).toLocaleDateString()} ${e.note?'- '+e.note:''}</div>
+                        </div>
+                    </div>
+                    <div class="expense-right">
+                        <div class="expense-amt">₹${parseFloat(e.amount).toLocaleString('en-IN')}</div>
+                        <div class="expense-del" onclick="requestDeleteExpense(${e.id})">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        
+        let t = 0, w = 0, m = 0, y = 0, curr = new Date();
+        expenses.forEach(e => {
+            let d = new Date(e.date), amt = parseFloat(e.amount);
+            if(d.toDateString() === curr.toDateString()) t += amt;
+            if(d.getMonth() === curr.getMonth() && d.getFullYear() === curr.getFullYear()) m += amt;
+            if(d.getFullYear() === curr.getFullYear()) y += amt;
+            if(Math.floor((curr - d) / 86400000) <= 7) w += amt;
+        });
+        document.getElementById('exp-today').innerText = '₹' + t.toLocaleString('en-IN');
+        document.getElementById('exp-week').innerText = '₹' + w.toLocaleString('en-IN');
+        document.getElementById('exp-month').innerText = '₹' + m.toLocaleString('en-IN');
+        document.getElementById('exp-year').innerText = '₹' + y.toLocaleString('en-IN');
+    }
+
+    /* Expense Deletion Flow */
+    window.requestDeleteExpense = function(id) {
+        if(navigator.vibrate) navigator.vibrate(50);
+        expenseToDelete = id;
+        document.getElementById('confirm-modal').classList.add('active');
+    }
+    window.closeConfirmModal = function() {
+        expenseToDelete = null;
+        document.getElementById('confirm-modal').classList.remove('active');
+    }
+    window.confirmDeleteExpense = function() {
+        if(expenseToDelete !== null) {
+            expenses = expenses.filter(e => e.id !== expenseToDelete);
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+            const activeFilter = document.querySelector('.filter-tab.active').innerText;
+            renderExpenses(activeFilter);
+            if(navigator.vibrate) navigator.vibrate(50);
+        }
+        closeConfirmModal();
+    }
+
+    window.filterExp = function(type) {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active'); renderExpenses(type);
+    }
+    
+    window.openExpenseModal = function() {
+        let catsHTML = Object.keys(catIcons).map(c => `<div class="cat-item ${c==='Food'?'active':''}" onclick="setCat('${c}', this)"><div style="font-size:20px">${catIcons[c]}</div><div style="font-size:12px; margin-top:5px;">${c}</div></div>`).join('');
+        openSubScreen('New Entry', `<div class="input-group"><input type="number" id="new-exp-amt" class="input-control" placeholder="Amount (₹)" style="font-size:24px; padding:20px;"></div><div class="cat-grid">${catsHTML}</div><div class="input-group"><input type="date" id="new-exp-date" class="input-control" value="${new Date().toISOString().split('T')[0]}"></div><div class="input-group"><input type="text" id="new-exp-note" class="input-control" placeholder="Add a note (optional)"></div><button class="btn-primary" onclick="saveExpense()">Save Entry</button>`);
+        selectedCat = 'Food';
+    }
+    window.setCat = function(c, el) { selectedCat = c; document.querySelectorAll('.cat-item').forEach(x => x.classList.remove('active')); el.classList.add('active'); }
+    
+    window.saveExpense = function() {
+        let amt = document.getElementById('new-exp-amt').value;
+        if(!amt || isNaN(amt)) return alert('Enter valid amount');
+        expenses.unshift({ id: Date.now(), amount: amt, category: selectedCat, date: document.getElementById('new-exp-date').value, note: document.getElementById('new-exp-note').value });
+        localStorage.setItem('expenses', JSON.stringify(expenses));
+        renderExpenses(document.querySelector('.filter-tab.active').innerText); 
+        closeSubScreen();
+    }
+    
+    // Init App
+    renderExpenses();
+    updateDisplay();
+
+</script>
+</body>
+</html>
